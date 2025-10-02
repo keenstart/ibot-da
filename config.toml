@@ -1,0 +1,64 @@
+# Example configuration for Owl Trading Bot
+
+[api_keys]
+okx_api_key = "YOUR_OKX_API_KEY"
+okx_secret_key = "YOUR_OKX_SECRET_KEY"
+okx_password = "YOUR_OKX_API_PASSPHRASE" # For live trading if required by API version
+
+[strategy]
+# symbol = "BTC-USDT-SWAP" # This was instrument_id, moved to backtesting for engine consistency
+n_day_high_period = 20 # Value of N for N-day high breakout strategy
+buy_cash_percentage = 0.8 # Spend 80% of current cash on a BUY signal
+risk_free_rate = 0.0 # Annual risk-free rate for Sharpe Ratio calculation
+sell_asset_percentage = 1.0
+buy_window_start_time = "15:00"
+buy_window_end_time = "16:00"
+sell_window_start_time = "09:00" # Start time for the sell window (UTC+8) e.g. "09:00" for 9 AM
+sell_window_end_time = "10:00"   # End time for the sell window (UTC+8) e.g. "10:00" for 10 AM. Sell attempts occur within [start, end).
+holding_period_days = 1
+# sell_params, stop_loss, take_profit can be added here later
+
+[mode]
+dry_run = true # Set to false for live trading
+
+[scheduler]
+# Times are in UTC+8 (Asia/Shanghai)
+daily_data_fetch_time = "10:00"
+buy_check_time = "15:00" # Time to check for buy signals
+buy_execute_time = "16:00" # Execute buy if signal present
+sell_execute_time = "09:55" # Execute sell
+
+[logging]
+log_file = "owl_bot.log"
+log_level = "INFO" # DEBUG, INFO, WARNING, ERROR, CRITICAL
+
+[exchange_settings]
+exchange_id = "kraken"  # Kraken allows public data access without API keys
+sandbox_mode = false
+
+[backtesting]
+symbol = "BTC/USDT" # Using spot symbol for testing without API keys
+timeframe = "1h" # Default timeframe for OHLCV data
+start_date = "2024-11-01"
+end_date = "2024-11-10"
+initial_capital = 10000.0 # USD or equivalent in quote currency
+commission_rate = 0.001 # 0.1% per trade (example for OKX taker fee)
+#slippage = 0.0005 # 0.05% slippage per trade (optional, for future implementation)
+
+# Note: The 'symbol' in [strategy] was the original 'instrument_id'.
+# For backtesting, the BacktestingEngine will primarily use config['backtesting']['symbol'].
+# Ensure this matches what your data_fetcher expects.
+# If live trading uses a different symbol identifier, that can be managed by the live trading components
+# potentially referencing config['strategy']['symbol_live'] or similar if needed.
+# For now, keeping one main 'symbol' in [backtesting] for clarity in the engine.
+# The signal generator itself is agnostic to the symbol string, it just processes data.
+# The engine provides the symbol to the data_fetcher and order simulator.
+
+# [proxy]
+# Optional proxy settings for data fetching and exchange communication.
+# proxy_url = "socks5h://user:password@your_proxy_host:port"  # Example for SOCKS5h with authentication
+# proxy_url = "socks5h://your_proxy_host:port"               # Example for SOCKS5h without authentication
+# proxy_type = "socks5h"  # Type of the proxy (e.g., socks5, socks5h, http).
+                          # Note: proxy_type in the URL scheme (e.g. socks5h://) is usually sufficient for ccxt.
+                          # This explicit 'proxy_type' parameter is available if needed by DataFetcher's logic,
+                          # but the primary configuration is via proxy_url.
