@@ -4,6 +4,11 @@ import time
 from datetime import datetime
 import os
 import pickle
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 class DataFetcher:
     """
@@ -127,15 +132,29 @@ class DataFetcher:
         # Determine effective force_fetch state
         current_force_fetch = self.force_fetch if force_fetch is None else force_fetch
 
-        # Cache setup
+        # Cache setup - include all relevant parameters in cache key
         since_str = str(since) if since is not None else "latest"
+        limit_str = str(limit) if limit is not None else "all"
+        # Create a stable hash of params dict if it exists
+        params_str = ""
+        if params:
+            import hashlib
+            import json
+            params_json = json.dumps(params, sort_keys=True)
+            params_hash = hashlib.md5(params_json.encode()).hexdigest()[:8]
+            params_str = f"params_{params_hash}"
+        
         cache_filename_parts = [
             self.exchange_id.lower(),
             symbol.replace('/', '_').lower(),
             timeframe,
-            since_str
+            since_str,
+            f"limit_{limit_str}"
         ]
-        # Filter out None or empty strings just in case, though 'since_str' handles 'since=None'
+        if params_str:
+            cache_filename_parts.append(params_str)
+        
+        # Filter out None or empty strings just in case
         cache_filename_parts = [part for part in cache_filename_parts if part]
         cache_filename = "_".join(cache_filename_parts) + ".pkl"
 
@@ -145,12 +164,17 @@ class DataFetcher:
         if not current_force_fetch and os.path.exists(cache_filepath):
             try:
                 with open(cache_filepath, 'rb') as f:
-                    print(f"Loading OHLCV data from cache: {cache_filepath}")
-                    return pickle.load(f)
+                    logger.info(f"Cache HIT: Loading OHLCV data from cache: {cache_filename}")
+                    print(f"Loading OHLCV data from cache: {cache_filename}")
+                    cached_data = pickle.load(f)
+                    logger.info(f"Cache successfully loaded {len(cached_data)} rows for {symbol} {timeframe}")
+                    return cached_data
             except Exception as e:
-                print(f"Error loading data from cache {cache_filepath}: {e}. Fetching from exchange.")
+                logger.warning(f"Cache ERROR: Failed to load cache {cache_filename}: {e}")
+                print(f"Error loading data from cache {cache_filename}: {e}. Fetching from exchange.")
 
         # Proceed to fetch from exchange if not loaded from cache
+        logger.info(f"Cache MISS: Fetching {symbol} {timeframe} data from exchange (force_fetch={current_force_fetch})")
         try:
             timeframe_duration_ms = self.exchange.parse_timeframe(timeframe) * 1000
             all_ohlcv_data = [] # Initialize here for broader scope
@@ -233,9 +257,11 @@ class DataFetcher:
                     os.makedirs(cache_dir, exist_ok=True)
                 with open(cache_filepath, 'wb') as f:
                     pickle.dump(df, f)
-                    print(f"Saved OHLCV data to cache: {cache_filepath}")
+                    logger.info(f"Cache WRITE: Saved {len(df)} rows to cache: {cache_filename}")
+                    print(f"Saved OHLCV data to cache: {cache_filename}")
             except Exception as e:
-                print(f"Error saving data to cache {cache_filepath}: {e}")
+                logger.error(f"Cache WRITE ERROR: Failed to save cache {cache_filename}: {e}")
+                print(f"Error saving data to cache {cache_filename}: {e}")
 
             return df
 

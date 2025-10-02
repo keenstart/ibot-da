@@ -130,3 +130,6 @@ config.toml # Actual config file, example is tracked
 
 # Image files
 *.png
+
+# OHLCV data cache directory
+.cache/
